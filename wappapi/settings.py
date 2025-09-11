@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',  # Added for DRF
     'demo',             # Added for our API app
+    'nested.things',   # Added for nested app
 ]
 
 MIDDLEWARE = [

@@ -1,12 +1,7 @@
-﻿from typing import Type, Union
-
-from django.db.models import Model as DjangoModel
-from pydantic import BaseModel as PydanticModel
+﻿from django.db.models import Model as DjangoModel
 from rest_framework.routers import DefaultRouter
 from rest_framework.serializers import ModelSerializer
 from rest_framework.viewsets import ModelViewSet
-
-ModelType = Union[Type[PydanticModel], Type[DjangoModel]]
 
 
 class Wapp:
@@ -54,3 +49,9 @@ class Wapp:
                 viewset = Wapp._generate_viewset(model)
                 router.register(slug, viewset, basename=slug)
         return router.urls
+
+    @classmethod
+    def urls(cls, app_name=None):
+        if app_name is None:
+            app_name = cls.__name__.lower()
+        return (cls.urlpatterns(), app_name)

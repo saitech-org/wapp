@@ -17,7 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from demo.wapp import DemoWapp
+from nested.things.wapp import ThingsWapp
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('demo/', include('demo.urls')),  # Include API app URLs
+    path('demo/', include(DemoWapp.urls())),  # Include API app URLs
+    path('things/', include(ThingsWapp.urls())),  # Include ThingsWapp URLs if needed
 ]
