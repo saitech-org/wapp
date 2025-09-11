@@ -1,3 +1,3 @@
-﻿from demo.wapp import wapp
+﻿from demo.wapp import DemoWapp
 
-urlpatterns = wapp.urlpatterns
+urlpatterns = DemoWapp.urlpatterns()

@@ -1,27 +1,15 @@
-﻿from collections.abc import Callable
-from typing import Type, Union, OrderedDict
-from pydantic import BaseModel as PydanticModel
-from django.db.models import Model as DjangoModel
-from django.urls import path
-from rest_framework.routers import DefaultRouter
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.serializers import ModelSerializer
+﻿from typing import Type, Union
 
-from wapp.decorators.endpoint_meta import EndpointMetadata
-from wapp.decorators.model_meta import ModelMetadata
+from django.db.models import Model as DjangoModel
+from pydantic import BaseModel as PydanticModel
+from rest_framework.routers import DefaultRouter
+from rest_framework.serializers import ModelSerializer
+from rest_framework.viewsets import ModelViewSet
 
 ModelType = Union[Type[PydanticModel], Type[DjangoModel]]
 
-WappModels = OrderedDict[str, ModelType]
-
-WappEndpoints = OrderedDict[Callable, EndpointMetadata]
-
 
 class Wapp:
-    def __init__(self, models: WappModels = None, endpoints: WappEndpoints = None):
-        self.models = models or {}
-        self.endpoints = endpoints or {}
-
     @staticmethod
     def _is_django_model(model):
         try:
@@ -51,11 +39,17 @@ class Wapp:
         })
         return viewset
 
-    @property
-    def urlpatterns(self):
+    @classmethod
+    def urlpatterns(cls):
         router = DefaultRouter()
-        for name, model in self.models.items():
+
+        models = getattr(cls, 'Models', None)
+        if not models:
+            return []
+
+        for name, model in models.__dict__.items():
             if Wapp._is_django_model(model):
+                print(f'Registering model: {name}')
                 slug = Wapp._get_model_slug(model)
                 viewset = Wapp._generate_viewset(model)
                 router.register(slug, viewset, basename=slug)

@@ -1,9 +1,8 @@
 ﻿from demo.db_models import Foo, Bar
-from wapp.wapp import Wapp, WappModels
+from wapp.wapp import Wapp
 
-wapp = Wapp(
-    models=WappModels({
-        "foo": Foo,
-        "bar": Bar
-    })
-)
+
+class DemoWapp(Wapp):
+    class Models:
+        foo = Foo
+        bar = Bar
