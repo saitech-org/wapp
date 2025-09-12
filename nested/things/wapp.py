@@ -1,21 +1,20 @@
-﻿from django.db import models
-from wapp.decorators.wapp import wapp
-from wapp.decorators.model_meta import ModelMetadata
-from wapp.wapp import Wapp
+﻿
+from flask_db import db
+from wapp.core import Wapp
 
-@wapp(ModelMetadata(
-    slug="thing"
-))
-class Thing(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    description = models.TextField(null=True, blank=True)
+class Thing(db.Model):
+    __tablename__ = 'thing'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
 
-    class Meta:
-        verbose_name = "Thing"
-        verbose_name_plural = "Things"
+    class WappModel:
+        slug = "thing"
+        name = "Thing"
+        description = "A model representing a Thing entity"
 
 
 class ThingsWapp(Wapp):
     class Models:
         thing = Thing
+
