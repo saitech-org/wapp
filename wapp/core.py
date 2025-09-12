@@ -21,7 +21,19 @@ class Wapp:
     db = None  # Bind the SQLAlchemy db instance here
 
     @classmethod
+    def register_wapp(cls, app, db_instance, url_prefix=None):
+        """
+        Plug-and-play registration for any Flask app.
+        Binds db and registers blueprint with the given prefix.
+        """
+        cls.bind_db(db_instance)
+        bp = cls.blueprint(url_prefix=url_prefix)
+        app.register_blueprint(bp)
+
+    @classmethod
     def bind_db(cls, db_instance):
+        if getattr(cls, 'db', None) is db_instance:
+            return  # Already bound
         cls.db = db_instance
         wapps = cls.get_wapps()
         if not wapps:

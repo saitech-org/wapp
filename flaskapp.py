@@ -31,10 +31,9 @@ def create_app():
     db.init_app(flask_app)
 
     # Bind db to the main Wapp
-    MainWapp.bind_db(db)
+    MainWapp.register_wapp(flask_app, db)
 
     # Register blueprints from your Wapps
-    flask_app.register_blueprint(MainWapp.blueprint(), url_prefix='/')
     with flask_app.app_context():
         # db.create_all()  # Create tables for all models (handled by Alembic now)
         pass
