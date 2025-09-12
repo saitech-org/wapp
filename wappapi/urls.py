@@ -19,9 +19,15 @@ from django.urls import path, include
 
 from demo.wapp import DemoWapp
 from nested.things.wapp import ThingsWapp
+from wapp.wapp import Wapp
+
+
+class MainWapp(Wapp):
+    class Wapps:
+        demo = DemoWapp
+        things = ThingsWapp
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('demo/', include(DemoWapp.urls())),  # Include API app URLs
-    path('things/', include(ThingsWapp.urls())),  # Include ThingsWapp URLs if needed
+    path('', include(MainWapp.urls())),
 ]

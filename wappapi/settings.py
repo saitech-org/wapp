@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',  # Added for DRF
     'demo',             # Added for our API app
     'nested.things',   # Added for nested app
+    'wappapi'
 ]
 
 MIDDLEWARE = [

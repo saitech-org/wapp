@@ -30,6 +30,8 @@ class Bar(BaseModelWithTimestamps):
 
 
 class DemoWapp(Wapp):
+    WAPP_LABEL = "demo"
+
     class Models:
         foo = Foo
         bar = Bar
