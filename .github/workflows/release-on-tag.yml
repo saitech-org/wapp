@@ -1,29 +1,25 @@
 ﻿name: Create Release on Tag
-
 on:
   push:
-    tags:
-      - '*.*.*'   # adjust pattern if you don't use a 'v' prefix
+    tags: ['*.*.*']
 
 permissions:
-  contents: write   # REQUIRED to create/edit releases
+  contents: write
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (required for some tools; safe anyway)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      # Easiest & robust: use the official action (no gh CLI flags issues)
-      - name: Create GitHub Release
+      - name: Create GitHub Release (uses PAT, not GITHUB_TOKEN)
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
           release_name: ${{ github.ref_name }}
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
