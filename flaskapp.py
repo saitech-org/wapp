@@ -4,7 +4,7 @@ from flask import Flask
 from env import db, ENV, WAPP_AUTO_MIGRATE, DATABASE_URL
 from demo.wapp import DemoWapp
 from nested.things.wapp import ThingsWapp
-from wapp.core import Wapp
+from core import Wapp
 import subprocess
 
 class MainWapp(Wapp):

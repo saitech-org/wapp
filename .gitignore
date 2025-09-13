@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
 # Distribution / packaging
 .Python
 env/
@@ -20,17 +17,16 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Django stuff:
-*.log
-db.sqlite3
-media
-staticfiles
+MANIFEST
 
 # PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
@@ -50,27 +46,22 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
 # mypy
 .mypy_cache/
 .dmypy.json
 
+# Pyre type checker
+.pyre/
+
 # VS Code
 .vscode/
-
-# Mac
-.DS_Store
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Local env
-.env
-.env.*
-
-# Ignore migrations cache
-**/migrations/__pycache__/
-
-# Ignore all __pycache__ folders
-**/__pycache__/
 

@@ -55,23 +55,29 @@ ENV=development
 ### 4. Define Your First Wapp
 
 In `mywapp/wapp.py`:
+
 ```python
 from env import db
-from wapp.core import Wapp
+from core import Wapp
+
 
 class Foo(db.Model):
     __tablename__ = 'foo'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+
     class WappModel:
         slug = "foo"
         name = "Foo"
+
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class MyWapp(Wapp):
     class Models:
         foo = Foo
+
     class Endpoints:
         _foo = True  # Enable auto-CRUD for Foo
 ```
@@ -79,15 +85,18 @@ class MyWapp(Wapp):
 ### 5. Create the Main App
 
 In `app.py`:
+
 ```python
 from flask import Flask
 from env import db, DATABASE_URL
 from mywapp.wapp import MyWapp
-from wapp.core import Wapp
+from core import Wapp
+
 
 class MainWapp(Wapp):
     class Wapps:
         mywapp = MyWapp
+
 
 def create_app():
     app = Flask(__name__)
@@ -95,6 +104,7 @@ def create_app():
     db.init_app(app)
     MainWapp.register_wapp(app, db)
     return app
+
 
 if __name__ == '__main__':
     app = create_app()
@@ -110,7 +120,8 @@ if __name__ == '__main__':
 - Edit `alembic.ini` to set `script_location = migrations` and `sqlalchemy.url = sqlite:///app.db` (or your DB URI).
 - Edit `migrations/env.py` to import your models and set `target_metadata = db.metadata`.
 
-**Tip:** To ensure Alembic uses the same SQLAlchemy metadata as your app, import your `db` object in `migrations/env.py`:
+**IMPORTANT:**
+To ensure Alembic autogenerate detects your models, you must import your SQLAlchemy db instance in `migrations/env.py` and set:
 
 ```python
 from env import db  # Use the same db instance as your app
@@ -118,7 +129,7 @@ from env import db  # Use the same db instance as your app
 target_metadata = db.metadata
 ```
 
-This allows Alembic to autogenerate migrations based on your actual models.
+This ensures Alembic uses the same metadata as your app and can autogenerate migrations for your models.
 
 ### 7. Run Migrations
 

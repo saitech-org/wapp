@@ -2,10 +2,17 @@
 Manual migration script for Alembic.
 
 Usage:
-    python migrate.py
+    python -m wapp.migrate
+    # or, if installed as a CLI:
+    wapp-migrate
 
 - In production: Call this script from your Docker entrypoint or manually before starting the app.
 - In development: You may run this script as needed, or automate it if desired.
+
+IMPORTANT:
+    For Alembic autogenerate to detect your models, you must import your SQLAlchemy db instance (e.g., from env import db) in your migrations/env.py and set:
+        target_metadata = db.metadata
+    This ensures Alembic uses the same metadata as your app.
 
 This script will:
   1. Autogenerate a migration if there are model changes (no-op if no changes).
@@ -16,7 +23,6 @@ from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from alembic.runtime.environment import EnvironmentContext
-from alembic.runtime.migration import MigrationContext
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 WAPP_ALEMBIC_INI = os.getenv('WAPP_ALEMBIC_INI', 'alembic.ini')
