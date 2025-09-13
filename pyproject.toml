@@ -25,3 +25,6 @@ local_scheme = "no-local-version"
 
 [project.scripts]
 wapp-init = "wapp.cli:wapp_init"
+
+[tool.setuptools.package-data]
+"wapp.templates" = ["*.py"]

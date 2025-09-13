@@ -1,4 +1,6 @@
 import os
+from importlib import resources
+
 import click
 import subprocess
 import importlib.resources as pkg_resources
@@ -33,7 +35,7 @@ def wapp_init():
                 click.echo(f'Skipping {filename}: already exists.')
                 continue
             try:
-                with pkg_resources.files('wapp.templates').joinpath(filename).open('r', encoding='utf-8') as src_file:
+                with resources.files("wapp.templates").joinpath(filename).open("r", encoding="utf-8") as src_file:
                     content = src_file.read()
                 with open(dest_path, 'w', encoding='utf-8') as dest_file:
                     dest_file.write(content)

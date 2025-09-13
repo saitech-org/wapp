@@ -6,11 +6,12 @@ Wapp is a modular framework for building Flask APIs with automatic CRUD endpoint
 
 ### TLDR
 
-```aiignore
-mkdir my_project
-cd my_project
-pip install saitech-wapp
-wapp-init
+```bash
+mkdir my_project | cd my_project | pip install saitech-wapp | wapp-init
+```
+
+```bash
+python app.py
 ```
 
 ### Prerequisites
