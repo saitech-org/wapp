@@ -4,7 +4,6 @@ from flask import Blueprint
 from sqlalchemy.orm import DeclarativeMeta
 from inspect import isclass
 from .endpoint_base import WappEndpoint
-import types
 
 SQLA_Model = DeclarativeMeta
 
@@ -82,16 +81,20 @@ class Wapp:
                 meta = getattr(model, 'WappModel', None)
                 if not meta or not hasattr(meta, 'slug'):
                     raise ValueError(f"Model '{model_name}' missing WappModel.slug.")
-                # New logic for _model field
+                # Enhanced logic for _model field
                 if isinstance(value, dict):
                     for action in cls.CRUD_ACTIONS:
-                        v = value.get(action)
+                        v = value.get(action, None)
+                        if v is False:
+                            continue  # Explicitly disabled
                         if v and isclass(v) and issubclass(v, WappEndpoint):
                             result.append((f"{model_name}_{action}", v))
-                        elif action in value:
+                        elif v is None:
                             endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                             result.append((f"{model_name}_{action}", endpoint_cls))
+                        # If v is not None, not a class, and not False, skip (invalid)
                 elif value:
+                    # If value is truthy (e.g. True), generate all endpoints
                     for action in cls.CRUD_ACTIONS:
                         endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                         result.append((f"{model_name}_{action}", endpoint_cls))
@@ -99,60 +102,34 @@ class Wapp:
 
     @classmethod
     def _generate_crud_endpoint(cls, model, meta, action):
-        conf = cls.CRUD_ACTIONS[action]
-        method = conf['method']
-        pattern = conf['pattern'].format(model_slug=meta.slug)
-        class_name = f"{model.__name__}_{action.capitalize()}Endpoint"
+        from .generic_endpoints import Get, List, Create, Update, Delete
         db = cls.db
-        def handle(self, request, query, path, body):
-            try:
-                if action == 'get':
-                    obj = model.query.get(path.get('id'))
-                    if not obj:
-                        return self.to_response({"error": "Not found"}), 404
-                    return self.to_response(obj)
-                elif action == 'list':
-                    objs = model.query.all()
-                    return self.to_response(objs)
-                elif action == 'create':
-                    data = body.model_dump() if body else (request.get_json(silent=True) or {})
-                    obj = model(**data)
-                    db.session.add(obj)
-                    db.session.commit()
-                    return self.to_response(obj)
-                elif action == 'update':
-                    obj = model.query.get(path.get('id'))
-                    if not obj:
-                        return self.to_response({"error": "Not found"}), 404
-                    data = body.model_dump() if body else (request.get_json(silent=True) or {})
-                    for k, v in data.items():
-                        setattr(obj, k, v)
-                    db.session.commit()
-                    return self.to_response(obj)
-                elif action == 'delete':
-                    obj = model.query.get(path.get('id'))
-                    if not obj:
-                        return self.to_response({"error": "Not found"}), 404
-                    db.session.delete(obj)
-                    db.session.commit()
-                    return self.to_response({"deleted": True})
-            except Exception as e:
-                db.session.rollback()
-                import logging
-                logging.exception(f"DB error in {class_name}: {e}")
-                return self.to_response({"error": str(e)}), 400
-        endpoint_cls = type(class_name, (WappEndpoint,), {
-            'handle': handle,
-            'Meta': type('Meta', (), {
-                'pattern': pattern,
-                'method': method,
-                'name': f"{meta.name} {action.capitalize()}",
-                'description': f"Auto-generated {action} endpoint for {meta.name}",
-                'request_model': None,
-                'response_model': None,
-            })
-        })
-        return endpoint_cls
+        slug = meta.slug
+        name = meta.name
+        # Map action to generic endpoint class
+        endpoint_map = {
+            'get': Get,
+            'list': List,
+            'create': Create,
+            'update': Update,
+            'delete': Delete,
+        }
+        endpoint_cls = endpoint_map[action]
+        # Set up Meta attributes dynamically
+        pattern = cls.CRUD_ACTIONS[action]['pattern'].format(model_slug=slug)
+        method = cls.CRUD_ACTIONS[action]['method']
+        description = f"Auto-generated {action} endpoint for {name}"
+        # Instantiate with required args
+        if action in ('create', 'update', 'delete'):
+            instance = endpoint_cls(model, meta, db)
+        else:
+            instance = endpoint_cls(model, meta)
+        # Patch Meta attributes
+        instance.Meta.pattern = pattern
+        instance.Meta.method = method
+        instance.Meta.name = f"{name} {action.capitalize()}"
+        instance.Meta.description = description
+        return type(instance.__class__.__name__, (instance.__class__,), dict(instance.__class__.__dict__, Meta=instance.Meta))
 
     @classmethod
     def get_wapps(cls) -> List[Tuple[str, Type["Wapp"]]]:
