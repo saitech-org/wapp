@@ -9,7 +9,7 @@ setup(
     description="A modular Flask API framework with auto CRUD and migrations",
     author="Your Name",
     author_email="your@email.com",
-    url="https://github.com/bob-the-coder/wapp",
+    url="https://github.com/saitech-org/wapp",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
