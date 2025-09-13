@@ -110,6 +110,16 @@ if __name__ == '__main__':
 - Edit `alembic.ini` to set `script_location = migrations` and `sqlalchemy.url = sqlite:///app.db` (or your DB URI).
 - Edit `migrations/env.py` to import your models and set `target_metadata = db.metadata`.
 
+**Tip:** To ensure Alembic uses the same SQLAlchemy metadata as your app, import your `db` object in `migrations/env.py`:
+
+```python
+from env import db  # Use the same db instance as your app
+# ...
+target_metadata = db.metadata
+```
+
+This allows Alembic to autogenerate migrations based on your actual models.
+
 ### 7. Run Migrations
 
 - To auto-generate and apply migrations:
