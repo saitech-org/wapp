@@ -3,42 +3,27 @@
 on:
   push:
     tags:
-      - '*.*.*'          # or '*.*.*' if you don’t prefix with v
+      - 'v*.*.*'   # adjust pattern if you don't use a 'v' prefix
 
 permissions:
-  contents: write         # REQUIRED to create/edit releases
+  contents: write   # REQUIRED to create/edit releases
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Derive tag + prerelease flag
-        id: meta
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          PRERELEASE=false
-          case "$TAG" in
-            *-alpha*|*-beta*|*-rc*|*-pre* ) PRERELEASE=true ;;
-          esac
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+      - name: Checkout (required for some tools; safe anyway)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Create or update GitHub Release
+      # Easiest & robust: use the official action (no gh CLI flags issues)
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          TAG='${{ steps.meta.outputs.tag }}'
-          PRERELEASE='${{ steps.meta.outputs.prerelease }}'
-
-          # Try to create; if it exists, update it (idempotent)
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --generate-notes \
-            $([ "$PRERELEASE" = true ] && echo --prerelease) \
-            --latest \
-          || gh release edit "$TAG" \
-            --title "$TAG" \
-            --generate-notes \
-            $([ "$PRERELEASE" = true ] && echo --prerelease) \
-            --latest
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
