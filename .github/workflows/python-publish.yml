@@ -2,6 +2,7 @@
 name: Publish on Release
 
 permissions:
+  contents: read
   id-token: write
 
 on:
