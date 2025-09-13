@@ -3,7 +3,7 @@
 on:
   push:
     tags:
-      - 'v*.*.*'   # adjust pattern if you don't use a 'v' prefix
+      - '*.*.*'   # adjust pattern if you don't use a 'v' prefix
 
 permissions:
   contents: write   # REQUIRED to create/edit releases
