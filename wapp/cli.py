@@ -8,6 +8,7 @@ TEMPLATE_FILES = [
     'app_env.py',
     'migrate_app.py',
     'create_app.py',
+    'example.py',
 ]
 
 DEPENDENCIES = [
@@ -27,10 +28,14 @@ def wapp_init():
     try:
         # Create project files from templates
         for filename in TEMPLATE_FILES:
+            dest_path = os.path.join(os.getcwd(), filename)
+            if os.path.exists(dest_path):
+                click.echo(f'Skipping {filename}: already exists.')
+                continue
             try:
                 with pkg_resources.files('wapp.templates').joinpath(filename).open('r', encoding='utf-8') as src_file:
                     content = src_file.read()
-                with open(os.path.join(os.getcwd(), filename), 'w', encoding='utf-8') as dest_file:
+                with open(dest_path, 'w', encoding='utf-8') as dest_file:
                     dest_file.write(content)
             except Exception as e:
                 click.echo(f'Error copying {filename}: {e}')
