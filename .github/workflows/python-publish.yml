@@ -1,9 +1,6 @@
 # .github/workflows/publish-on-release.yml
 name: Publish on Release
 
-permissions:
-  contents: read
-  id-token: write
 
 on:
   release:
@@ -16,7 +13,11 @@ env:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-
+    
+    permissions:
+      contents: read
+      id-token: write
+      
     steps:
       - name: Debug GitHub context
         run: |
