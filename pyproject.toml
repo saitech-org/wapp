@@ -22,3 +22,6 @@ include = ["wapp*"]
 [tool.setuptools_scm]
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
+
+[project.scripts]
+wapp-init = "wapp.cli:wapp_init"
