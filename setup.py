@@ -4,11 +4,10 @@ with open("README.md", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="wapp",
+    name="wapp.py",
     version="0.1.0",
     description="A modular Flask API framework with auto CRUD and migrations",
-    author="Your Name",
-    author_email="your@email.com",
+    author="saitech",
     url="https://github.com/saitech-org/wapp",
     long_description=long_description,
     long_description_content_type="text/markdown",
