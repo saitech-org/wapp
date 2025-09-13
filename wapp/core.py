@@ -163,12 +163,12 @@ class Wapp:
                 if isinstance(value, dict):
                     for action in cls.CRUD_ACTIONS:
                         v = value.get(action, None)
-                        if v is False:
+                        if v is False or None:
                             continue  # Explicitly disabled
                         if v and isclass(v) and issubclass(v, WappEndpoint):
                             result.append((f"{model_name}_{action}", v))
                             to_set[f"{model_name}_{action}"] = v
-                        elif v is None:
+                        elif v:
                             endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                             result.append((f"{model_name}_{action}", endpoint_cls))
                             to_set[f"{model_name}_{action}"] = endpoint_cls
