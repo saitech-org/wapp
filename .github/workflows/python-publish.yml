@@ -1,6 +1,7 @@
-# If you prefer publishing when a GitHub Release is published, use this instead:
+# .github/workflows/publish-on-release.yml
 name: Publish on Release
 
+# Minimal perms for checkout + OIDC (OIDC is harmless even if you use an API token)
 permissions:
   contents: read
   id-token: write
@@ -12,6 +13,7 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+
     steps:
       - name: Debug GitHub context
         run: |
@@ -21,19 +23,51 @@ jobs:
           echo "Ref:          $GITHUB_REF"
           echo "Ref type:     $GITHUB_REF_TYPE"
           echo "SHA:          $GITHUB_SHA"
+          echo "Release tag:  ${{ github.event.release.tag_name }}"
+
+      - name: Install jq (for token perms check)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
       - name: Test GitHub token
         run: |
           curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
                -H "Accept: application/vnd.github+json" \
                https://api.github.com/repos/$GITHUB_REPOSITORY \
             | jq '.full_name, .private, .permissions'
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      # Check out the exact release tag; fetch-depth: 0 keeps full history for tools like setuptools_scm
+      - name: Check out code at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - run: python -m pip install --upgrade pip && pip install build
-      - run: python -m build
-      - uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Install build backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      # Option A: Publish with a classic PyPI API token (set repo secret PYPI_API_TOKEN)
+      - name: Publish to PyPI (API token)
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: dist
+
+      # Option B: Publish via Trusted Publishing (OIDC). Enable Trusted Publisher on PyPI project first.
+      - name: Publish to PyPI (Trusted Publisher OIDC)
+        if: ${{ secrets.PYPI_API_TOKEN == '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
           packages-dir: dist
