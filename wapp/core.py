@@ -23,6 +23,7 @@ class Wapp:
     def bind(cls, app, db_instance, url_prefix=None):
         """
         Binds the db, computes endpoints, creates blueprint, and registers it with the Flask app.
+        Only the main Wapp should be registered; nested Wapps are included via blueprint nesting.
         """
         cls._cached_endpoints = None  # Reset cache in case of rebind
         cls._blueprint = None
@@ -30,9 +31,7 @@ class Wapp:
         cls.get_endpoints(fresh=True)  # Compute and cache endpoints
         cls._blueprint = cls._create_blueprint(url_prefix=url_prefix)
         app.register_blueprint(cls._blueprint)
-        # Bind nested wapps recursively
-        for _, wapp in cls.get_wapps():
-            wapp.bind(app, db_instance, url_prefix=f"/{wapp.name}")
+        # Do NOT recursively bind nested wapps here; blueprint handles it.
 
     CRUD_ACTIONS = {
         'get': {'method': 'GET', 'pattern': '/{model_slug}/<int:id>'},
