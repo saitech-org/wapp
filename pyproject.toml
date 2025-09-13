@@ -21,7 +21,7 @@ dependencies = [
 Homepage = "https://github.com/saitech-org/wapp"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = ""}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = [""]
