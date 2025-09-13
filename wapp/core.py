@@ -24,9 +24,11 @@ class Wapp:
         """
         Binds the db to all wapps/endpoints, builds blueprint, and registers it with the Flask app.
         Only the main Wapp should be registered; nested Wapps are included via blueprint nesting.
+        Ensures endpoints are generated for all wapps before binding db, so db is available on all endpoints.
         """
         cls._cached_endpoints = None
         cls._blueprint = None
+        cls._generate_endpoints_recursive()
         cls._bind_db_recursive(db_instance)
         cls._blueprint = cls._build_blueprint(url_prefix=url_prefix)
         app.register_blueprint(cls._blueprint)
@@ -58,16 +60,22 @@ class Wapp:
             wapp.bind_db(db_instance)
 
     @classmethod
+    def _generate_endpoints_recursive(cls):
+        """
+        Ensure all endpoints (including nested Wapps) are generated before db binding.
+        """
+        cls.get_endpoints(fresh=True)
+        for _, wapp in cls.get_wapps():
+            wapp._generate_endpoints_recursive()
+
+    @classmethod
     def _bind_db_recursive(cls, db_instance):
         """
         Bind db to this Wapp, all endpoints (after CRUD generation), and all nested Wapps.
         """
         cls.db = db_instance
-        # Ensure endpoints (including CRUD) are generated before binding
-        endpoints = cls.get_endpoints(fresh=True)
-        for _, endpoint_cls in endpoints:
+        for _, endpoint_cls in cls.get_endpoints():
             setattr(endpoint_cls, 'db', db_instance)
-        # Recursively bind db to nested wapps
         for _, wapp in cls.get_wapps():
             wapp._bind_db_recursive(db_instance)
 
