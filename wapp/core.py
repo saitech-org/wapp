@@ -69,7 +69,8 @@ class Wapp:
             meta = getattr(endpoint_cls, 'Meta', None)
             if meta and meta.pattern and meta.method:
                 endpoint_instance = endpoint_cls()
-                endpoint_name = f"{cls.__name__}_{endpoint_cls.__name__}"
+                # Use blueprint name for uniqueness
+                endpoint_name = f"{bp.name}_{endpoint_cls.__name__}"
                 api_path = (full_prefix.rstrip("/") + meta.pattern).replace("//", "/")
                 print(f"Registering endpoint: {meta.method} {api_path} -> {endpoint_cls.__name__} ({meta.name}) as {endpoint_name}")
                 bp.add_url_rule(
