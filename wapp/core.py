@@ -20,26 +20,19 @@ class Wapp:
     db = None  # Bind the SQLAlchemy db instance here
 
     @classmethod
-    def register_wapp(cls, app, db_instance, url_prefix=None):
+    def bind(cls, app, db_instance, url_prefix=None):
         """
-        Plug-and-play registration for any Flask app.
-        Binds db and registers blueprint with the given prefix.
+        Binds the db, computes endpoints, creates blueprint, and registers it with the Flask app.
         """
+        cls._cached_endpoints = None  # Reset cache in case of rebind
+        cls._blueprint = None
         cls.bind_db(db_instance)
-        bp = cls.blueprint(url_prefix=url_prefix)
-        app.register_blueprint(bp)
-
-    @classmethod
-    def bind_db(cls, db_instance):
-        if getattr(cls, 'db', None) is db_instance:
-            return  # Already bound
-        cls.db = db_instance
-        wapps = cls.get_wapps()
-        if not wapps:
-            return
-
-        for _, wapp in wapps:
-            wapp.bind_db(db_instance)
+        cls.get_endpoints(fresh=True)  # Compute and cache endpoints
+        cls._blueprint = cls._create_blueprint(url_prefix=url_prefix)
+        app.register_blueprint(cls._blueprint)
+        # Bind nested wapps recursively
+        for _, wapp in cls.get_wapps():
+            wapp.bind(app, db_instance, url_prefix=f"/{wapp.name}")
 
     CRUD_ACTIONS = {
         'get': {'method': 'GET', 'pattern': '/{model_slug}/<int:id>'},
@@ -48,6 +41,57 @@ class Wapp:
         'update': {'method': 'PUT', 'pattern': '/{model_slug}/<int:id>'},
         'delete': {'method': 'DELETE', 'pattern': '/{model_slug}/<int:id>'}
     }
+
+    _cached_endpoints = None  # Class-level cache for endpoints
+    _blueprint = None  # Class-level cache for blueprint
+
+    @classmethod
+    def bind_db(cls, db_instance):
+        if getattr(cls, 'db', None) is db_instance:
+            return  # Already bound
+        cls.db = db_instance
+        # Always refresh endpoints when binding db
+        for _, endpoint_cls in cls.get_endpoints(fresh=True):
+            setattr(endpoint_cls, 'db', db_instance)
+        # Bind db to nested wapps
+        wapps = cls.get_wapps()
+        if not wapps:
+            return
+        for _, wapp in wapps:
+            wapp.bind_db(db_instance)
+
+    @classmethod
+    def _create_blueprint(cls, url_prefix=None, parent_prefix=""):
+        this_prefix = url_prefix or ""
+        full_prefix = (parent_prefix.rstrip("/") + this_prefix).replace("//", "/")
+        bp = Blueprint(cls.__name__, __name__, url_prefix=this_prefix)
+        for name, endpoint_cls in cls.get_endpoints():
+            meta = getattr(endpoint_cls, 'Meta', None)
+            if meta and meta.pattern and meta.method:
+                endpoint_instance = endpoint_cls()
+                endpoint_name = f"{cls.__name__}_{endpoint_cls.__name__}"
+                api_path = (full_prefix.rstrip("/") + meta.pattern).replace("//", "/")
+                print(f"Registering endpoint: {meta.method} {api_path} -> {endpoint_cls.__name__} ({meta.name}) as {endpoint_name}")
+                bp.add_url_rule(
+                    meta.pattern,
+                    endpoint=endpoint_name,
+                    view_func=endpoint_instance,
+                    methods=[meta.method]
+                )
+        for wapp_name, wapp_cls in cls.get_wapps():
+            nested_prefix = f"{full_prefix}/{wapp_name}".replace("//", "/")
+            nested_bp = wapp_cls._create_blueprint(url_prefix=f"/{wapp_name}", parent_prefix=full_prefix)
+            bp.register_blueprint(nested_bp)
+        return bp
+
+    @classmethod
+    def blueprint(cls):
+        """
+        Returns the cached blueprint after binding, or raises if not bound.
+        """
+        if cls._blueprint is None:
+            raise RuntimeError("Wapp must be bound before accessing blueprint.")
+        return cls._blueprint
 
     @classmethod
     def get_models(cls):
@@ -61,9 +105,13 @@ class Wapp:
         ]
 
     @classmethod
-    def get_endpoints(cls):
+    def get_endpoints(cls, fresh=False):
+        if not fresh and cls._cached_endpoints is not None:
+            return cls._cached_endpoints
+
         endpoints = getattr(cls, 'Endpoints', None)
         if not endpoints:
+            cls._cached_endpoints = []
             return []
         result = []
         # 1. Explicit endpoint classes
@@ -89,15 +137,19 @@ class Wapp:
                             continue  # Explicitly disabled
                         if v and isclass(v) and issubclass(v, WappEndpoint):
                             result.append((f"{model_name}_{action}", v))
+                            setattr(endpoints, f"{model_name}_{action}", v)
                         elif v is None:
                             endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                             result.append((f"{model_name}_{action}", endpoint_cls))
+                            setattr(endpoints, f"{model_name}_{action}", endpoint_cls)
                         # If v is not None, not a class, and not False, skip (invalid)
                 elif value:
                     # If value is truthy (e.g. True), generate all endpoints
                     for action in cls.CRUD_ACTIONS:
                         endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                         result.append((f"{model_name}_{action}", endpoint_cls))
+                        setattr(endpoints, f"{model_name}_{action}", endpoint_cls)
+        cls._cached_endpoints = result
         return result
 
     @classmethod
@@ -147,31 +199,3 @@ class Wapp:
             for name, wapp in wapps.__dict__.items()
             if isclass(wapp) and issubclass(wapp, Wapp) and wapp is not cls
         ]
-
-    @classmethod
-    def blueprint(cls, url_prefix=None, parent_prefix=""):
-        # Compose the full prefix for logging
-        this_prefix = url_prefix or ""
-        full_prefix = (parent_prefix.rstrip("/") + this_prefix).replace("//", "/")
-        bp = Blueprint(cls.__name__, __name__, url_prefix=this_prefix)
-        # Register endpoints
-        for name, endpoint_cls in cls.get_endpoints():
-            meta = getattr(endpoint_cls, 'Meta', None)
-            if meta and meta.pattern and meta.method:
-                endpoint_instance = endpoint_cls()
-                endpoint_name = f"{cls.__name__}_{endpoint_cls.__name__}"
-                # Compose the full API path for logging
-                api_path = (full_prefix.rstrip("/") + meta.pattern).replace("//", "/")
-                print(f"Registering endpoint: {meta.method} {api_path} -> {endpoint_cls.__name__} ({meta.name}) as {endpoint_name}")
-                bp.add_url_rule(
-                    meta.pattern,
-                    endpoint=endpoint_name,  # Unique endpoint name
-                    view_func=endpoint_instance,  # Use __call__ for standardized handler
-                    methods=[meta.method]
-                )
-        # Register nested wapps
-        for wapp_name, wapp_cls in cls.get_wapps():
-            nested_prefix = f"{full_prefix}/{wapp_name}".replace("//", "/")
-            nested_bp = wapp_cls.blueprint(url_prefix=f"/{wapp_name}", parent_prefix=full_prefix)
-            bp.register_blueprint(nested_bp)
-        return bp
