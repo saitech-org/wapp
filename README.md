@@ -4,7 +4,7 @@ Wapp is a modular, plug-and-play framework for building Flask APIs with automati
 
 ---
 
-## 🚀 Getting Started: Step-by-Step
+## 🚀 Getting Started
 
 ### 1. Install Wapp and Dependencies
 
