@@ -303,11 +303,11 @@ class Wapp:
             response_schema = model_schema
             summary = f"Get {meta.name} by id"
             params_yaml = """
-          - name: id
-            in: path
-            type: integer
-            required: true
-            description: Record ID
+  - name: id
+    in: path
+    type: integer
+    required: true
+    description: Record ID
             """
         elif action == "create":
             response_schema = model_schema
@@ -318,35 +318,35 @@ class Wapp:
                 body_schema = dict(body_schema)
                 body_schema["required"] = [r for r in body_schema["required"] if r != "id"]
             params_yaml = f"""
-          - in: body
-            name: body
-            required: true
-            schema: {body_schema!r}
+  - in: body
+    name: body
+    required: true
+    schema: {body_schema!r}
             """
         elif action == "update":
             response_schema = model_schema
             summary = f"Update {meta.name}"
             body_schema = dict(model_schema)
             params_yaml = f"""
-          - name: id
-            in: path
-            type: integer
-            required: true
-            description: Record ID
-          - in: body
-            name: body
-            required: true
-            schema: {body_schema!r}
+  - name: id
+    in: path
+    type: integer
+    required: true
+    description: Record ID
+  - in: body
+    name: body
+    required: true
+    schema: {body_schema!r}
             """
         elif action == "delete":
             response_schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
             summary = f"Delete {meta.name}"
             params_yaml = """
-          - name: id
-            in: path
-            type: integer
-            required: true
-            description: Record ID
+  - name: id
+    in: path
+    type: integer
+    required: true
+    description: Record ID
             """
         else:
             response_schema = {"type": "object"}
@@ -354,13 +354,13 @@ class Wapp:
 
         # Flasgger uses YAML front-matter after a docstring line. Keep it minimal.
         yaml_doc = f'''{summary}
-    ---
-    tags:
-      - {tag}
-    parameters:{params_yaml if params_yaml.strip() else " []"}
-    responses:
-      200:
-        description: Successful operation
-        schema: {response_schema!r}
+---
+tags:
+  - {tag}
+parameters:{params_yaml if params_yaml.strip() else " []"}
+responses:
+  200:
+    description: Successful operation
+    schema: {response_schema!r}
     '''
         return yaml_doc
