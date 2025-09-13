@@ -114,22 +114,27 @@ class Wapp:
             'update': Update,
             'delete': Delete,
         }
-        endpoint_cls = endpoint_map[action]
+        base_cls = endpoint_map[action]
         # Set up Meta attributes dynamically
         pattern = cls.CRUD_ACTIONS[action]['pattern'].format(model_slug=slug)
         method = cls.CRUD_ACTIONS[action]['method']
         description = f"Auto-generated {action} endpoint for {name}"
-        # Instantiate with required args
-        if action in ('create', 'update', 'delete'):
-            instance = endpoint_cls(model, meta, db)
-        else:
-            instance = endpoint_cls(model, meta)
-        # Patch Meta attributes
-        instance.Meta.pattern = pattern
-        instance.Meta.method = method
-        instance.Meta.name = f"{name} {action.capitalize()}"
-        instance.Meta.description = description
-        return type(instance.__class__.__name__, (instance.__class__,), dict(instance.__class__.__dict__, Meta=instance.Meta))
+        # Dynamically create a subclass and bind model/meta/db
+        class_attrs = {
+            'model': model,
+            'meta': meta,
+            'db': db,
+            'Meta': type('Meta', (base_cls.Meta,), {
+                'pattern': pattern,
+                'method': method,
+                'name': f"{name} {action.capitalize()}",
+                'description': description,
+                'request_model': getattr(base_cls.Meta, 'request_model', None),
+                'response_model': getattr(base_cls.Meta, 'response_model', None),
+            })
+        }
+        endpoint_cls = type(f"{model.__name__}_{action.capitalize()}Endpoint", (base_cls,), class_attrs)
+        return endpoint_cls
 
     @classmethod
     def get_wapps(cls) -> List[Tuple[str, Type["Wapp"]]]:
