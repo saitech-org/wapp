@@ -1,5 +1,5 @@
 ﻿
-from flask_db import db
+from env import db
 from wapp.core import Wapp
 
 class Thing(db.Model):

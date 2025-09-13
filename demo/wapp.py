@@ -1,4 +1,4 @@
-﻿from flask_db import db
+﻿from env import db
 import pydantic
 from wapp.core import Wapp
 from wapp.endpoint_base import WappEndpoint
@@ -12,6 +12,7 @@ class Foo(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     bat = db.Column(db.JSON, nullable=True)  # New JSON/dict field
+    ok = db.Column(db.Boolean, default=True)  # New Boolean field
 
     class WappModel:
         slug = "foo"

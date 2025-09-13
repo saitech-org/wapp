@@ -1,10 +1,10 @@
-﻿from flask import Flask
-from flask_db import db
+﻿import os
+
+from flask import Flask
+from env import db, ENV, WAPP_AUTO_MIGRATE, DATABASE_URL
 from demo.wapp import DemoWapp
 from nested.things.wapp import ThingsWapp
 from wapp.core import Wapp
-import os
-from dotenv import load_dotenv
 import subprocess
 
 class MainWapp(Wapp):
@@ -12,17 +12,13 @@ class MainWapp(Wapp):
         demo = DemoWapp
         things = ThingsWapp
 
+def is_main():
+    return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
 
-# Load environment variables from .env
-load_dotenv()
-
-ENV = os.getenv('ENV', 'production')
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///app.db')
-
-if ENV == 'development':
-    # Run migration script automatically in development
+if ENV == 'development' and WAPP_AUTO_MIGRATE and is_main():
+    # Run migration script automatically in development using the CLI entry point
     print('[flaskapp.py] Running migrations (development mode)...')
-    subprocess.run(['python', 'migrate.py'], check=True)
+    subprocess.run(['wapp-migrate'], check=True)
 
 
 def create_app():

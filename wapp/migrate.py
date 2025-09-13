@@ -18,12 +18,12 @@ from alembic.script import ScriptDirectory
 from alembic.runtime.environment import EnvironmentContext
 from alembic.runtime.migration import MigrationContext
 
-ALEMBIC_INI = os.path.join(os.path.dirname(__file__), 'alembic.ini')
-MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), 'migrations')
+DATABASE_URL = os.getenv('DATABASE_URL')
+WAPP_ALEMBIC_INI = os.getenv('WAPP_ALEMBIC_INI', 'alembic.ini')
 
 def has_pending_changes():
     """Return True if there are model changes not yet reflected in the DB."""
-    alembic_cfg = Config(ALEMBIC_INI)
+    alembic_cfg = Config(WAPP_ALEMBIC_INI)
     script = ScriptDirectory.from_config(alembic_cfg)
     def _check_for_changes(rev, context):
         diff = context._compare_metadata(context.connection, context.opts['target_metadata'])
@@ -33,7 +33,23 @@ def has_pending_changes():
             return env.run_migrations()
 
 def main():
-    alembic_cfg = Config(ALEMBIC_INI)
+    alembic_cfg = Config(WAPP_ALEMBIC_INI)
+
+    # Ensure the migrations directory exists
+    script_location = alembic_cfg.get_main_option('script_location')
+    ini_dir = os.path.dirname(os.path.abspath(WAPP_ALEMBIC_INI))
+    migrations_dir = os.path.abspath(os.path.join(ini_dir, script_location))
+    if not os.path.exists(migrations_dir):
+        os.makedirs(migrations_dir)
+    env_py = os.path.join(migrations_dir, 'env.py')
+    if not os.path.exists(env_py):
+        # Initialize Alembic environment if missing
+        print(f"[migrate.py] Alembic env.py not found, initializing Alembic environment in {migrations_dir}...")
+        import subprocess
+        subprocess.run(['alembic', 'init', migrations_dir], check=True)
+
+    if DATABASE_URL:
+        alembic_cfg.set_main_option('sqlalchemy.url', DATABASE_URL)
     print("[migrate.py] Checking for model changes...")
     # Try to autogenerate a migration if there are changes
     try:
@@ -47,4 +63,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
