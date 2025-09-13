@@ -1,6 +1,8 @@
 # If you prefer publishing when a GitHub Release is published, use this instead:
 name: Publish on Release
 
+permissions:
+  id-token: write
 
 on:
   release:
@@ -20,4 +22,3 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: dist
-          id-token: write
