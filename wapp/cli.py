@@ -1,14 +1,14 @@
 import os
 import click
 
+
 @click.command()
 @click.argument('project_name')
 def wapp_init(project_name):
     """Bootstrap a new Wapp project."""
-    try:
-        os.makedirs(project_name)
-        files_to_create = {
-            'app.py': '''import subprocess
+    os.makedirs(project_name)
+    files_to_create = {
+        'app.py': '''import subprocess
 import sys
 from app_env import ENV
 from create_app import create_app
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     app = create_app(bind=True)
     app.run(debug=True)
 ''',
-            'app_env.py': '''import os
+        'app_env.py': '''import os
 from pathlib import Path
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
@@ -39,7 +39,7 @@ RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///instance/app.db")
 DATABASE_URL = normalize_sqlite_url(RAW_DATABASE_URL)
 print(DATABASE_URL)
 ''',
-            'migrate_app.py': '''from __future__ import annotations
+        'migrate_app.py': '''from __future__ import annotations
 import sys
 from pathlib import Path
 from alembic import command
@@ -57,14 +57,16 @@ def alembic_config() -> Config:
     cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
     return cfg
 ''',
-        }
-        for filename, content in files_to_create.items():
+    }
+    for filename, content in files_to_create.items():
+        try:
             with open(os.path.join(project_name, filename), 'w') as f:
                 f.write(content)
-        click.echo(f'Project {project_name} initialized successfully!')
-    except Exception as e:
-        click.echo(f'Error initializing project: {e}')
+        except Exception as e:
+            click.echo(f'Error initializing project: {e}')
+
+    click.echo(f'Project {project_name} initialized successfully!')
+
 
 if __name__ == '__main__':
     wapp_init()
-
