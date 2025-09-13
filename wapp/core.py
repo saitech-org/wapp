@@ -22,16 +22,14 @@ class Wapp:
     @classmethod
     def bind(cls, app, db_instance, url_prefix=None):
         """
-        Binds the db, computes endpoints, creates blueprint, and registers it with the Flask app.
+        Binds the db to all wapps/endpoints, builds blueprint, and registers it with the Flask app.
         Only the main Wapp should be registered; nested Wapps are included via blueprint nesting.
         """
-        cls._cached_endpoints = None  # Reset cache in case of rebind
+        cls._cached_endpoints = None
         cls._blueprint = None
-        cls.bind_db(db_instance)
-        cls.get_endpoints(fresh=True)  # Compute and cache endpoints
-        cls._blueprint = cls._create_blueprint(url_prefix=url_prefix)
+        cls._bind_db_recursive(db_instance)
+        cls._blueprint = cls._build_blueprint(url_prefix=url_prefix)
         app.register_blueprint(cls._blueprint)
-        # Do NOT recursively bind nested wapps here; blueprint handles it.
 
     CRUD_ACTIONS = {
         'get': {'method': 'GET', 'pattern': '/{model_slug}/<int:id>'},
@@ -60,15 +58,32 @@ class Wapp:
             wapp.bind_db(db_instance)
 
     @classmethod
-    def _create_blueprint(cls, url_prefix=None, parent_prefix=""):
+    def _bind_db_recursive(cls, db_instance):
+        """
+        Bind db to this Wapp, all endpoints (after CRUD generation), and all nested Wapps.
+        """
+        cls.db = db_instance
+        # Ensure endpoints (including CRUD) are generated before binding
+        endpoints = cls.get_endpoints(fresh=True)
+        for _, endpoint_cls in endpoints:
+            setattr(endpoint_cls, 'db', db_instance)
+        # Recursively bind db to nested wapps
+        for _, wapp in cls.get_wapps():
+            wapp._bind_db_recursive(db_instance)
+
+    @classmethod
+    def _build_blueprint(cls, url_prefix=None, parent_prefix=""):
+        """
+        Build a blueprint including this Wapp's endpoints and all nested Wapps, using attribute name as slug.
+        """
         this_prefix = url_prefix or ""
         full_prefix = (parent_prefix.rstrip("/") + this_prefix).replace("//", "/")
         bp = Blueprint(cls.__name__, __name__, url_prefix=this_prefix)
+        # Register this Wapp's endpoints
         for name, endpoint_cls in cls.get_endpoints():
             meta = getattr(endpoint_cls, 'Meta', None)
             if meta and meta.pattern and meta.method:
                 endpoint_instance = endpoint_cls()
-                # Use blueprint name, module, and qualname for global uniqueness
                 endpoint_name = f"{bp.name}_{endpoint_cls.__module__}__{endpoint_cls.__qualname__}".replace(".", "_")
                 api_path = (full_prefix.rstrip("/") + meta.pattern).replace("//", "/")
                 print(f"Registering endpoint: {meta.method} {api_path} -> {endpoint_cls.__name__} ({meta.name}) as {endpoint_name}")
@@ -78,9 +93,10 @@ class Wapp:
                     view_func=endpoint_instance,
                     methods=[meta.method]
                 )
+        # Register nested wapps using attribute name as slug
         for wapp_name, wapp_cls in cls.get_wapps():
-            nested_prefix = f"{full_prefix}/{wapp_name}".replace("//", "/")
-            nested_bp = wapp_cls._create_blueprint(url_prefix=f"/{wapp_name}", parent_prefix=full_prefix)
+            nested_prefix = f"/{wapp_name}"
+            nested_bp = wapp_cls._build_blueprint(url_prefix=nested_prefix, parent_prefix=full_prefix)
             bp.register_blueprint(nested_bp)
         return bp
 
