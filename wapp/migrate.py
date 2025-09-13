@@ -1,71 +1,126 @@
-﻿"""
-Manual migration script for Alembic.
+﻿# wapp/migrate.py
+from __future__ import annotations
 
-Usage:
-    python -m wapp.migrate
-    # or, if installed as a CLI:
-    wapp-migrate
+import sys
+from pathlib import Path
 
-- In production: Call this script from your Docker entrypoint or manually before starting the app.
-- In development: You may run this script as needed, or automate it if desired.
-
-IMPORTANT:
-    For Alembic autogenerate to detect your models, you must import your SQLAlchemy db instance (e.g., from env import db) in your migrations/env.py and set:
-        target_metadata = db.metadata
-    This ensures Alembic uses the same metadata as your app.
-
-This script will:
-  1. Autogenerate a migration if there are model changes (no-op if no changes).
-  2. Apply all migrations to bring the database schema up to date.
-"""
-import os
 from alembic import command
 from alembic.config import Config
-from alembic.script import ScriptDirectory
-from alembic.runtime.environment import EnvironmentContext
+from alembic.autogenerate import compare_metadata
+from alembic.migration import MigrationContext
 
-DATABASE_URL = os.getenv('DATABASE_URL')
-WAPP_ALEMBIC_INI = os.getenv('WAPP_ALEMBIC_INI', 'alembic.ini')
+from app import create_app
+from app_env import db, DATABASE_URL
 
-def has_pending_changes():
-    """Return True if there are model changes not yet reflected in the DB."""
-    alembic_cfg = Config(WAPP_ALEMBIC_INI)
-    script = ScriptDirectory.from_config(alembic_cfg)
-    def _check_for_changes(rev, context):
-        diff = context._compare_metadata(context.connection, context.opts['target_metadata'])
-        return bool(diff)
-    with EnvironmentContext(alembic_cfg, script, as_sql=False, fn=_check_for_changes) as env:
-        with env.get_context().connection.begin():
-            return env.run_migrations()
+HERE = Path(__file__).resolve().parent
+MIGRATIONS_DIR = HERE / "migrations"  # contains env.py and versions/
 
-def main():
-    alembic_cfg = Config(WAPP_ALEMBIC_INI)
+def _alembic_config() -> Config:
+    cfg = Config()  # no alembic.ini needed; we set options here
+    cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
+    cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    # Optional niceties
+    cfg.set_main_option("timezone", "utc")
+    return cfg
 
-    # Ensure the migrations directory exists
-    script_location = alembic_cfg.get_main_option('script_location')
-    ini_dir = os.path.dirname(os.path.abspath(WAPP_ALEMBIC_INI))
-    migrations_dir = os.path.abspath(os.path.join(ini_dir, script_location))
-    if not os.path.exists(migrations_dir):
-        os.makedirs(migrations_dir)
-    env_py = os.path.join(migrations_dir, 'env.py')
-    if not os.path.exists(env_py):
-        # Initialize Alembic environment if missing
-        print(f"[migrate.py] Alembic env.py not found, initializing Alembic environment in {migrations_dir}...")
-        import subprocess
-        subprocess.run(['alembic', 'init', migrations_dir], check=True)
+def _ensure_migrations_dir(cfg: Config):
+    """Initialize 'migrations' folder if it doesn't exist."""
+    if not MIGRATIONS_DIR.exists():
+        # Create parent and init Alembic skeleton (env.py we already provide)
+        MIGRATIONS_DIR.mkdir(parents=True, exist_ok=True)
+        (MIGRATIONS_DIR / "versions").mkdir(exist_ok=True)
+        # We DO NOT call command.init because we ship our own env.py.
 
-    if DATABASE_URL:
-        alembic_cfg.set_main_option('sqlalchemy.url', DATABASE_URL)
-    print("[migrate.py] Checking for model changes...")
-    # Try to autogenerate a migration if there are changes
-    try:
-        command.revision(alembic_cfg, message="Auto migration", autogenerate=True)
-        print("[migrate.py] Migration file generated (if there were changes).")
-    except Exception as e:
-        print(f"[migrate.py] No migration generated: {e}")
-    print("[migrate.py] Applying migrations...")
-    command.upgrade(alembic_cfg, "head")
-    print("[migrate.py] Database schema is up to date.")
+def _has_metadata_diff() -> bool:
+    """Return True if there are model vs DB schema differences."""
+    app = create_app()
+    with app.app_context():
+        with db.engine.connect() as conn:
+            mc = MigrationContext.configure(conn)
+            diffs = compare_metadata(mc, db.metadata)
+            return bool(diffs)
+
+def _autogenerate_revision_if_needed(cfg: Config, message: str = "autogenerate"):
+    """
+    Create a revision only if autogenerate finds real changes.
+    Uses a callback to cancel creating empty migrations.
+    """
+    def _process_revision_directives(context, revision, directives):
+        # If Alembic found nothing, prevent creating an empty file.
+        if directives:
+            script = directives[0]
+            if not getattr(script, "upgrade_ops", None):
+                directives[:] = []
+                print("No schema changes detected (no upgrade_ops).")
+                return
+            if script.upgrade_ops.is_empty():
+                directives[:] = []
+                print("No schema changes detected.")
+                return
+
+    command.revision(
+        cfg,
+        message=message,
+        autogenerate=True,
+        process_revision_directives=_process_revision_directives,
+    )
+
+def main(argv: list[str] | None = None):
+    """
+    Usage:
+      python -m wapp.migrate           # check, create revision if needed, then upgrade
+      python -m wapp.migrate check     # just check for diffs (exit 0/1)
+      python -m wapp.migrate revision  # force a revision if there are changes
+      python -m wapp.migrate upgrade   # upgrade to head
+      python -m wapp.migrate downgrade -1  # example passthrough
+    """
+    argv = argv or sys.argv[1:]
+    cfg = _alembic_config()
+    _ensure_migrations_dir(cfg)
+
+    # Ensure app context for db.engine usage inside env.py runs
+    app = create_app()
+    with app.app_context():
+        if not argv:
+            # default: smart pipeline (check → revision if needed → upgrade)
+            if _has_metadata_diff():
+                _autogenerate_revision_if_needed(cfg)
+            else:
+                print("No schema changes detected; skipping revision.")
+            command.upgrade(cfg, "head")
+            return
+
+        cmd = argv[0]
+
+        if cmd == "check":
+            changed = _has_metadata_diff()
+            print("diff:changed" if changed else "diff:none")
+            sys.exit(0 if not changed else 1)
+
+        if cmd == "revision":
+            _autogenerate_revision_if_needed(cfg)
+            return
+
+        if cmd == "upgrade":
+            target = argv[1] if len(argv) > 1 else "head"
+            command.upgrade(cfg, target)
+            return
+
+        if cmd == "downgrade":
+            target = argv[1] if len(argv) > 1 else "-1"
+            command.downgrade(cfg, target)
+            return
+
+        # pass-through for other alembic commands if you want:
+        # e.g. "current", "history", etc.
+        if cmd in {"current", "history", "stamp"}:
+            args = argv[1:] if len(argv) > 1 else []
+            getattr(command, cmd)(cfg, *args)
+            return
+
+        print(f"Unknown command: {cmd}")
+        sys.exit(2)
+
 
 if __name__ == "__main__":
     main()
