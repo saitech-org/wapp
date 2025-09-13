@@ -15,6 +15,12 @@ dependencies = ["alembic","python-dotenv","flask","sqlalchemy"]
 [project.urls]
 Homepage = "https://github.com/saitech-org/wapp"
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"wapp.templates" = ["*"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["wapp*"]
