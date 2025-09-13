@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,26 +8,17 @@ dynamic = ["version"]
 description = "A modular Flask API framework with auto CRUD and migrations"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = { text = "MIT" }
 authors = [{ name = "saitech" }]
-dependencies = [
-  "alembic",
-  "python-dotenv",
-  "flask",
-  "sqlalchemy"
-]
+dependencies = ["alembic","python-dotenv","flask","sqlalchemy"]
 
 [project.urls]
 Homepage = "https://github.com/saitech-org/wapp"
-
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["wapp*"]
 
-
 [tool.setuptools_scm]
-# Accept tags like v1.2.3 or 1.2.3 and use exactly that as the version
-tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
