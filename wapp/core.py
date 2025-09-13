@@ -110,7 +110,7 @@ class Wapp:
             return cls._cached_endpoints
 
         endpoints = getattr(cls, 'Endpoints', None)
-        if not endpoints:
+        if not endpoints or not hasattr(endpoints, '__dict__'):
             cls._cached_endpoints = []
             return []
         result = []
