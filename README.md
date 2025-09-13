@@ -58,7 +58,7 @@ In `mywapp/wapp.py`:
 
 ```python
 from env import db
-from wapp.core import Wapp
+from src.wapp import Wapp
 
 
 class Foo(db.Model):
@@ -90,7 +90,7 @@ In `app.py`:
 from flask import Flask
 from env import db, DATABASE_URL
 from mywapp.wapp import MyWapp
-from wapp.core import Wapp
+from src.wapp import Wapp
 
 
 class MainWapp(Wapp):
