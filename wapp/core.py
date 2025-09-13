@@ -95,14 +95,14 @@ class Wapp:
         for name, endpoint_cls in cls.get_endpoints():
             meta = getattr(endpoint_cls, 'Meta', None)
             if meta and meta.pattern and meta.method:
-                endpoint_instance = endpoint_cls()
+                view_func = cls._wrap_endpoint_for_flasgger(endpoint_cls)
                 endpoint_name = f"{bp.name}_{endpoint_cls.__module__}__{endpoint_cls.__qualname__}".replace(".", "_")
                 api_path = (full_prefix.rstrip("/") + meta.pattern).replace("//", "/")
                 print(f"Registering endpoint: {meta.method} {api_path} -> {endpoint_cls.__name__} ({meta.name}) as {endpoint_name}")
                 bp.add_url_rule(
                     meta.pattern,
                     endpoint=endpoint_name,
-                    view_func=endpoint_instance,
+                    view_func=view_func,
                     methods=[meta.method]
                 )
         # Register nested wapps using attribute name as slug
@@ -364,3 +364,22 @@ responses:
     schema: {response_schema!r}
     '''
         return yaml_doc
+
+    @classmethod
+    def _wrap_endpoint_for_flasgger(cls, endpoint_cls):
+        """
+        Turn a callable endpoint class into a plain function that:
+        - forwards calls to the instance
+        - carries __name__, __module__, and __doc__ for Flasgger
+        """
+        endpoint = endpoint_cls()
+
+        def view(*args, **kwargs):
+            return endpoint(*args, **kwargs)
+
+        # make it look like a normal view function
+        view.__name__ = endpoint_cls.__name__
+        view.__qualname__ = endpoint_cls.__qualname__
+        view.__module__ = endpoint_cls.__module__
+        view.__doc__ = getattr(endpoint_cls, "__doc__", None)
+        return view
