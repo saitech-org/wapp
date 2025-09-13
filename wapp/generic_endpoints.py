@@ -1,11 +1,12 @@
 from .endpoint_base import WappEndpoint
 from flask import request as flask_request
 
-class Get(WappEndpoint):
-    def __init__(self, model, meta):
-        self.model = model
-        self.meta = meta
+class WappModelEndpoint(WappEndpoint):
+    model = None
+    meta = None
+    db = None
 
+class Get(WappModelEndpoint):
     class Meta:
         method = 'GET'
         pattern = None  # Set dynamically
@@ -20,11 +21,7 @@ class Get(WappEndpoint):
             return self.to_response({"error": "Not found"}), 404
         return self.to_response(obj)
 
-class List(WappEndpoint):
-    def __init__(self, model, meta):
-        self.model = model
-        self.meta = meta
-
+class List(WappModelEndpoint):
     class Meta:
         method = 'GET'
         pattern = None
@@ -37,12 +34,7 @@ class List(WappEndpoint):
         objs = self.model.query.all()
         return self.to_response(objs)
 
-class Create(WappEndpoint):
-    def __init__(self, model, meta, db):
-        self.model = model
-        self.meta = meta
-        self.db = db
-
+class Create(WappModelEndpoint):
     class Meta:
         method = 'POST'
         pattern = None
@@ -58,12 +50,7 @@ class Create(WappEndpoint):
         self.db.session.commit()
         return self.to_response(obj)
 
-class Update(WappEndpoint):
-    def __init__(self, model, meta, db):
-        self.model = model
-        self.meta = meta
-        self.db = db
-
+class Update(WappModelEndpoint):
     class Meta:
         method = 'PUT'
         pattern = None
@@ -82,12 +69,7 @@ class Update(WappEndpoint):
         self.db.session.commit()
         return self.to_response(obj)
 
-class Delete(WappEndpoint):
-    def __init__(self, model, meta, db):
-        self.model = model
-        self.meta = meta
-        self.db = db
-
+class Delete(WappModelEndpoint):
     class Meta:
         method = 'DELETE'
         pattern = None
@@ -103,4 +85,3 @@ class Delete(WappEndpoint):
         self.db.session.delete(obj)
         self.db.session.commit()
         return self.to_response({"deleted": True})
-
