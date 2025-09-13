@@ -1,1 +1,4 @@
-﻿
+﻿# Include the README and LICENSE files in the source distribution
+include README.md
+include LICENSE
+
