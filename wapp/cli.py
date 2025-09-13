@@ -1,6 +1,4 @@
 import os
-import sys
-
 import click
 import subprocess
 import importlib.resources as pkg_resources
@@ -30,7 +28,7 @@ def wapp_init():
         # Create project files from templates
         for filename in TEMPLATE_FILES:
             try:
-                with open(pkg_resources.files('wapp.templates').joinpath(filename),'r', encoding='utf-8') as src_file:
+                with pkg_resources.files('wapp.templates').joinpath(filename).open('r', encoding='utf-8') as src_file:
                     content = src_file.read()
                 with open(os.path.join(os.getcwd(), filename), 'w', encoding='utf-8') as dest_file:
                     dest_file.write(content)
@@ -38,10 +36,23 @@ def wapp_init():
                 click.echo(f'Error copying {filename}: {e}')
 
         # Install necessary dependencies
-        subprocess.run([sys.executable, "-m", "pip", "install"] + DEPENDENCIES, check=True)
+        subprocess.run([os.sys.executable, "-m", "pip", "install"] + DEPENDENCIES, check=True)
 
         # Initialize Alembic
-        subprocess.run([sys.executable, "-m", "alembic", "init", "migrations"], check=True)
+        subprocess.run([os.sys.executable, "-m", "alembic", "init", "migrations"], check=True)
+
+        # Update migrations/env.py to set target_metadata
+        migrations_env_path = os.path.join(os.getcwd(), 'migrations', 'env.py')
+        with open(migrations_env_path, 'r', encoding='utf-8') as file:
+            content = file.readlines()
+
+        # Insert the line to load db from app_env
+        for i, line in enumerate(content):
+            if "target_metadata = None" in line:
+                content[i] = "from app_env import db\n\ntarget_metadata = db.metadata\n"
+
+        with open(migrations_env_path, 'w', encoding='utf-8') as file:
+            file.writelines(content)
 
         click.echo('Wapp project initialized successfully in the current directory!')
 
