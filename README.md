@@ -1,4 +1,4 @@
-﻿# Wapp Framework - Quickstart Guide
+# Wapp Framework - Quickstart Guide
 
 Wapp is a modular, plug-and-play framework for building Flask APIs with automatic CRUD endpoints, model registration, and Alembic migrations. This guide will help you get started as a developer using Wapp as an external package.
 
