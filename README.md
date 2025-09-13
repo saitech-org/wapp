@@ -11,7 +11,7 @@ Wapp is a modular, plug-and-play framework for building Flask APIs with automati
 Install Wapp from PyPI (or your package registry) and its dependencies:
 
 ```bash
-pip install wapp flask flask_sqlalchemy alembic python-dotenv pydantic
+pip install saitech-wapp flask flask_sqlalchemy alembic python-dotenv pydantic
 ```
 
 ### 2. Initialize Your Project

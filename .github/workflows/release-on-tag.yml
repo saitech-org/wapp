@@ -1,0 +1,44 @@
+﻿name: Create Release on Tag
+
+on:
+  push:
+    tags:
+      - '*.*.*'          # or '*.*.*' if you don’t prefix with v
+
+permissions:
+  contents: write         # REQUIRED to create/edit releases
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Derive tag + prerelease flag
+        id: meta
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PRERELEASE=false
+          case "$TAG" in
+            *-alpha*|*-beta*|*-rc*|*-pre* ) PRERELEASE=true ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG='${{ steps.meta.outputs.tag }}'
+          PRERELEASE='${{ steps.meta.outputs.prerelease }}'
+
+          # Try to create; if it exists, update it (idempotent)
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            $([ "$PRERELEASE" = true ] && echo --prerelease) \
+            --latest \
+          || gh release edit "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            $([ "$PRERELEASE" = true ] && echo --prerelease) \
+            --latest
