@@ -1,7 +1,6 @@
 # .github/workflows/publish-on-release.yml
 name: Publish on Release
 
-# Minimal perms for checkout + OIDC (OIDC is harmless even if you use an API token)
 permissions:
   contents: read
   id-token: write
@@ -9,6 +8,10 @@ permissions:
 on:
   release:
     types: [published]
+
+env:
+  # Expose whether a token was provided so we can branch safely in `if:` expressions
+  HAS_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
 jobs:
   build-and-publish:
@@ -24,6 +27,7 @@ jobs:
           echo "Ref type:     $GITHUB_REF_TYPE"
           echo "SHA:          $GITHUB_SHA"
           echo "Release tag:  ${{ github.event.release.tag_name }}"
+          echo "Has PyPI token? ${{ env.HAS_PYPI_TOKEN != '' }}"
 
       - name: Install jq (for token perms check)
         run: |
@@ -37,7 +41,6 @@ jobs:
                https://api.github.com/repos/$GITHUB_REPOSITORY \
             | jq '.full_name, .private, .permissions'
 
-      # Check out the exact release tag; fetch-depth: 0 keeps full history for tools like setuptools_scm
       - name: Check out code at release tag
         uses: actions/checkout@v4
         with:
@@ -57,17 +60,17 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build
 
-      # Option A: Publish with a classic PyPI API token (set repo secret PYPI_API_TOKEN)
+      # If a classic API token is present, use it
       - name: Publish to PyPI (API token)
-        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        if: ${{ env.HAS_PYPI_TOKEN != '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: dist
 
-      # Option B: Publish via Trusted Publishing (OIDC). Enable Trusted Publisher on PyPI project first.
+      # Otherwise fall back to Trusted Publishing (OIDC)
       - name: Publish to PyPI (Trusted Publisher OIDC)
-        if: ${{ secrets.PYPI_API_TOKEN == '' }}
+        if: ${{ env.HAS_PYPI_TOKEN == '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
