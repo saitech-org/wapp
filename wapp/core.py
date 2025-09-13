@@ -114,13 +114,15 @@ class Wapp:
             cls._cached_endpoints = []
             return []
         result = []
+        to_set = {}  # Collect new endpoint attributes to set after iteration
+        endpoints_dict = dict(endpoints.__dict__.items())  # Copy for safe iteration
         # 1. Explicit endpoint classes
-        for name, view in endpoints.__dict__.items():
+        for name, view in endpoints_dict.items():
             if isclass(view) and issubclass(view, WappEndpoint):
                 result.append((name, view))
         # 2. CRUD auto-generation for _model attributes
         models = dict(cls.get_models())
-        for name, value in endpoints.__dict__.items():
+        for name, value in endpoints_dict.items():
             if name.startswith('_'):
                 model_name = name[1:]
                 if model_name not in models:
@@ -137,18 +139,21 @@ class Wapp:
                             continue  # Explicitly disabled
                         if v and isclass(v) and issubclass(v, WappEndpoint):
                             result.append((f"{model_name}_{action}", v))
-                            setattr(endpoints, f"{model_name}_{action}", v)
+                            to_set[f"{model_name}_{action}"] = v
                         elif v is None:
                             endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                             result.append((f"{model_name}_{action}", endpoint_cls))
-                            setattr(endpoints, f"{model_name}_{action}", endpoint_cls)
+                            to_set[f"{model_name}_{action}"] = endpoint_cls
                         # If v is not None, not a class, and not False, skip (invalid)
                 elif value:
                     # If value is truthy (e.g. True), generate all endpoints
                     for action in cls.CRUD_ACTIONS:
                         endpoint_cls = cls._generate_crud_endpoint(model, meta, action)
                         result.append((f"{model_name}_{action}", endpoint_cls))
-                        setattr(endpoints, f"{model_name}_{action}", endpoint_cls)
+                        to_set[f"{model_name}_{action}"] = endpoint_cls
+        # Set new endpoint attributes after iteration
+        for k, v in to_set.items():
+            setattr(endpoints, k, v)
         cls._cached_endpoints = result
         return result
 
