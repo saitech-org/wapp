@@ -1,46 +1,81 @@
-# Wapp Framework — Quickstart Guide
+# Wapp — Quickstart Guide
 
-Wapp is a modular framework for building Flask APIs with automatic CRUD endpoints, nested applications, and Alembic migrations. This guide will help you quickly set up your project and effectively define your models, endpoints, and customize request and response types.
+Wapp is a modular framework for building Flask APIs with automatic CRUD endpoints, nested applications, and Alembic migrations. This guide will help you quickly set up your project, define your models and endpoints, and customize request and response types.
+
+---
 
 ## Quick Setup Guide
 
-### TLDR
+### TL;DR
 
 ```bash
-mkdir my_project | cd my_project | pip install saitech-wapp | wapp-init
-```
-
-```bash
+mkdir my_project && cd my_project
+pip install saitech-wapp
+wapp-init
 python app.py
 ```
 
+Your API docs will be available at:
+[http://127.0.0.1:5000/apidocs/](http://127.0.0.1:5000/apidocs/)
+
+---
+
 ### Prerequisites
 
-Make sure you have Python (3.6 or higher) installed. Then install the required packages via the command line:
+* **Python 3.8+** (Wapp and its dependencies require at least Python 3.8).
+* Install the package using your preferred tool:
 
 ```bash
-pip install saitech-wapp flask flask_sqlalchemy alembic flasgger python-dotenv pydantic
+pip install saitech-wapp
 ```
+
+Or with Poetry/PDM/UV:
+
+```bash
+poetry add saitech-wapp
+# or
+pdm add saitech-wapp
+# or
+uv add saitech-wapp
+```
+
+---
 
 ### Bootstrap Your Project
 
 Use the CLI to initialize a new Wapp project:
 
 ```bash
-python -m cli
+wapp-init
 ```
 
-This command will create a new directory with necessary files like `app.py`, `app_env.py`, and others to get you started right away.
+This command will create necessary files like `app.py`, `app_env.py`, `migrate_app.py`, and `create_app.py`.
+
+*(If you installed in editable mode, you can also run `python -m cli`.)*
+
+---
 
 ### Running the Application
 
-After bootstrapping, run your application using:
+Start your application:
 
 ```bash
 python app.py
 ```
 
-Your API will be available at `http://127.0.0.1:5000/apidocs`.
+Open the API docs at:
+[http://127.0.0.1:5000/apidocs/](http://127.0.0.1:5000/apidocs/)
+
+---
+
+### Database Migrations
+
+Initialize the database with Alembic:
+
+```bash
+alembic revision --autogenerate -m "init"
+alembic upgrade head
+```
 
 ---
 
@@ -48,26 +83,25 @@ Your API will be available at `http://127.0.0.1:5000/apidocs`.
 
 ### 1. Flask
 
-Flask is a lightweight WSGI web application framework for Python. It provides the basic structure for web applications, handling routing, request/response management, and middleware integration.
+Flask provides the basic structure for routing, request/response management, and middleware.
 
 ### 2. SQLAlchemy
 
-SQLAlchemy is an ORM (Object-Relational Mapping) tool that abstracts database interactions, allowing you to work with database records as Python objects. You define models that represent your database tables, and SQLAlchemy handles querying and data manipulation.
+SQLAlchemy abstracts database interactions via ORM models.
 
-### 3. Wapp Framework
+### 3. Wapp
 
-Wapp builds on Flask and SQLAlchemy, providing additional features like:
-- Automatic generation of CRUD endpoints based on your models.
-- Nested applications, allowing you to group related functionality.
-- Integration with Alembic for database migrations.
+Wapp builds on Flask and SQLAlchemy, adding:
+
+* Automatic CRUD endpoint generation
+* Nested applications for grouping related functionality
+* Integration with Alembic migrations
 
 ---
 
 ## Defining Models
 
-Defining a model in Wapp involves creating a class that extends `db.Model` from SQLAlchemy.
-
-### Basic Structure
+Define models by extending `db.Model` from SQLAlchemy:
 
 ```python
 from app_env import db
@@ -78,8 +112,8 @@ class YourModel(db.Model):
     name = db.Column(db.String(120), nullable=False)
 
     class WappModel:
-        slug = "your_model"  # URL slug for the model
-        name = "Your Model"   # Display name in documentation
+        slug = "your_model"
+        name = "Your Model"
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -106,11 +140,9 @@ class User(db.Model):
 
 ## Defining Endpoints
 
-Endpoints in Wapp are classes that handle API requests for your models. You can use auto-generated endpoints or create custom ones.
+Endpoints are classes that handle API requests for your models. You can let Wapp auto-generate CRUD endpoints or define custom ones.
 
-### Creating Endpoints
-
-You can create an endpoint by extending `WappEndpoint`. Here's the basic structure:
+### Creating a Custom Endpoint
 
 ```python
 from wapp.core import Wapp
@@ -118,7 +150,7 @@ from wapp.endpoint_base import WappEndpoint
 from pydantic import BaseModel as PydanticModel
 
 class YourRequestModel(PydanticModel):
-    name: str  # Request body schema
+    name: str
 
 class YourResponseModel(PydanticModel):
     id: int
@@ -131,13 +163,6 @@ class YourEndpoint(WappEndpoint):
     responses:
       200:
         description: Successful retrieval
-        schema:
-          type: object
-          properties:
-            id:
-              type: integer
-            name:
-              type: string
     """
     class Meta:
         method = 'GET'
@@ -147,7 +172,6 @@ class YourEndpoint(WappEndpoint):
         response_model = YourResponseModel
 
     def handle(self, request, query, path, body):
-        # Logic for handling the request
         obj = YourModel.query.get(path['id'])
         if not obj:
             return {"error": "Not Found"}, 404
@@ -156,19 +180,18 @@ class YourEndpoint(WappEndpoint):
 
 ### Using Auto-CRUD Generation
 
-If your endpoint class includes the `_model` attribute set to `True`, Wapp will automatically generate CRUD functionality for you.
+If your endpoint class includes `_model = True`, Wapp generates CRUD endpoints automatically.
 
-### Example: UsersWapp with Auto-CRUD and Custom Endpoints
+### Example: UsersWapp with Auto-CRUD + Custom Endpoint
 
 ```python
 class UsersWapp(Wapp):
     class Models:
-        user = User  # Model to expose
+        user = User
 
     class Endpoints:
-        _user = True  # Automatically generate CRUD endpoints
+        _user = True  # Auto-CRUD for User
 
-        # Custom endpoint example
         class UsersStatsEndpoint(WappEndpoint):
             """ Retrieve user statistics
             ---
@@ -176,11 +199,6 @@ class UsersWapp(Wapp):
             responses:
               200:
                 description: User statistics
-                schema:
-                  type: object
-                  properties:
-                    total_users:
-                      type: integer
             """
             class Meta:
                 method = 'GET'
@@ -190,20 +208,15 @@ class UsersWapp(Wapp):
             def handle(self, request, query, path, body):
                 total_users = User.query.count()
                 return {"total_users": total_users}
-        
-        stats = UsersStatsEndpoint  # Register custom endpoint
 
+        stats = UsersStatsEndpoint
 ```
 
 ---
 
 ## Request and Response Types
 
-- **Request Models:** You can define request bodies using Pydantic models, which allows you to perform validation easily.
-
-- **Response Models:** Similarly, you can define the structure of responses using Pydantic models for clear API documentation and consistent data.
-
-### Example Request and Response Models
+Define request/response bodies with **Pydantic models** for validation and documentation.
 
 ```python
 class CreateUserRequest(PydanticModel):
@@ -216,24 +229,13 @@ class CreateUserResponse(PydanticModel):
     email: str
 ```
 
-### Customizing Endpoints with Request/Response Models
-
-When defining endpoints, you can specify these models in the `Meta` class to clarify how the API interacts with users.
+Attach them in your endpoint `Meta`:
 
 ```python
 class CreateUserEndpoint(WappEndpoint):
     """ Create a new user
     ---
     tags: [User]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema: CreateUserRequest
-    responses:
-      201:
-        description: User created
-        schema: CreateUserResponse
     """
     class Meta:
         method = 'POST'
@@ -253,8 +255,16 @@ class CreateUserEndpoint(WappEndpoint):
 
 ## Conclusion
 
-With Wapp, you can rapidly develop robust Flask APIs using SQLAlchemy for database management. By following this guide, you’ll be able to set up a new project, define your models, create endpoints tailored to your application's needs, and utilize request/response types for effective data handling.
+With Wapp, you can rapidly build robust Flask APIs with SQLAlchemy models, Alembic migrations, and auto-generated CRUD.
 
-For more advanced topics, such as migrations and nested applications, please refer to the complete documentation or explore the examples provided in the project.
+* Initialize with `wapp-init`
+* Define models via SQLAlchemy
+* Expose them with auto-CRUD or custom endpoints
+* Use Pydantic for validation and response typing
 
-Happy coding! 🚀
+For advanced usage (nested apps, migrations, customization), see the full documentation and included examples.
+
+Happy coding 🚀
+
+```
+```
