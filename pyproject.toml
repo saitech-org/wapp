@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "saitech-wapp"
 dynamic = ["version"]
-description = "A modular Flask API framework with auto CRUD and migrations"
+description = "A lightweight FastAPI helper framework with async SQLAlchemy auto-CRUD and migrations"
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [{ name = "saitech" }]
-dependencies = ["alembic","python-dotenv","flask","sqlalchemy"]
+dependencies = ["alembic","python-dotenv","fastapi","uvicorn[standard]","sqlalchemy","pydantic","aiosqlite"]
 
 [project.urls]
 Homepage = "https://github.com/saitech-org/wapp"
