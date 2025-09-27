@@ -41,10 +41,6 @@ def make_sessionmaker(db_url: str) -> async_sessionmaker[AsyncSession]:
     engine = create_async_engine(db_url, future=True, pool_pre_ping=True)
     return async_sessionmaker(engine, expire_on_commit=False)
 
-async def get_session(session_maker: async_sessionmaker[AsyncSession]):
-    async with session_maker() as s:
-        yield s
-
 # ---------- Minimal endpoint contract (class-based, FastAPI-ready) ----------
 
 
@@ -364,10 +360,6 @@ class Wapp:
         return router
 
 # ---------- Factory for an app with a root Wapp ----------
-
-def make_sessionmaker(db_url: str) -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(db_url, future=True, pool_pre_ping=True)
-    return async_sessionmaker(engine, expire_on_commit=False)
 
 def get_session_dep(session_maker: async_sessionmaker[AsyncSession]):
     # returns a FastAPI dependency function
