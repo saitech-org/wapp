@@ -7,11 +7,11 @@ from importlib import resources
 
 import click
 
-TEMPLATE_FILES = ["app.py","app_env.py","migrate_app.py","create_app.py","example.py"]
+TEMPLATE_FILES = ["app.py","users_demo.py","settings.py","automigrate.py"]
 
 DEPENDENCIES = [
-    "saitech-wapp","flask","flask_sqlalchemy","alembic",
-    "flasgger","python-dotenv","pydantic",
+    "saitech-wapp","fastapi","uvicorn[standard]","sqlalchemy","alembic",
+    "pydantic","python-dotenv","aiosqlite",
 ]
 
 ALEMBIC_DIR = "migrations"
@@ -152,28 +152,39 @@ def _init_alembic():
 
 
 def _patch_alembic_env():
+    # Instead of editing the generated env.py in-place, replace it with our template that imports
+    # the project's app_env (db) and sets target_metadata accordingly. This ensures consistent
+    # autogeneration behavior for users' projects.
     env_path = Path.cwd() / ALEMBIC_DIR / "env.py"
     if not env_path.exists():
         click.echo("Alembic env.py not found; skipping metadata wiring.")
         return
-    content = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
-    already_imported = any("from app_env import db" in ln for ln in content)
-    replaced = False
-    for i, ln in enumerate(content):
-        if "target_metadata = None" in ln:
+    try:
+        # Load the alembic env template from package resources and write it to migrations/env.py
+        with resources.files(PACKAGE_TEMPLATES).joinpath("env.py").open("r", encoding="utf-8") as tmpl:
+            env_path.write_text(tmpl.read(), encoding="utf-8")
+        click.echo("Wrote migrations/env.py from template.")
+    except Exception as e:
+        click.echo(f"Error writing migrations/env.py from template: {e}")
+        # Fallback to trying to patch existing env.py minimally (legacy behavior)
+        content = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        already_imported = any("from app_env import db" in ln for ln in content)
+        replaced = False
+        for i, ln in enumerate(content):
+            if "target_metadata = None" in ln:
+                if not already_imported:
+                    content[i] = "from app_env import db\n\ntarget_metadata = db.metadata\n"
+                else:
+                    content[i] = "target_metadata = db.metadata\n"
+                replaced = True
+                break
+        if not replaced:
             if not already_imported:
-                content[i] = "from app_env import db\n\ntarget_metadata = db.metadata\n"
-            else:
-                content[i] = "target_metadata = db.metadata\n"
-            replaced = True
-            break
-    if not replaced:
-        if not already_imported:
-            content.insert(0, "from app_env import db\n")
-        if not any("target_metadata" in ln for ln in content):
-            content.insert(1, "target_metadata = db.metadata\n")
-    env_path.write_text("".join(content), encoding="utf-8")
-    click.echo("Patched migrations/env.py target_metadata.")
+                content.insert(0, "from app_env import db\n")
+            if not any("target_metadata" in ln for ln in content):
+                content.insert(1, "target_metadata = db.metadata\n")
+        env_path.write_text("".join(content), encoding="utf-8")
+        click.echo("Patched migrations/env.py target_metadata (fallback).")
 
 
 @click.command()
@@ -189,7 +200,13 @@ def _patch_alembic_env():
     help="Which package manager to use for installing deps.",
 )
 def wapp_init(install_deps: bool, installer: str):
-    """Bootstrap a new Wapp project in the current directory."""
+    """Bootstrap a new Wapp project in the current directory (FastAPI + async SQLAlchemy demo).
+
+    This creates a small demo app, app_env helpers for DB wiring, and simple migration helpers.
+
+    The generated demo uses a minimal User model and a sample endpoint to check email existence.
+    Comments in the templates explain how to add JWT/OIDC auth and further customize the project.
+    """
     try:
         _copy_templates()
         if install_deps:
