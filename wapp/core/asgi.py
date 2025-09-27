@@ -9,6 +9,7 @@ from pydantic import BaseModel as PydanticModel, create_model
 from sqlalchemy import Column
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from starlette.middleware.cors import CORSMiddleware
 
 _PARAM_RE = re.compile(r"\{(?P<name>[a-zA-Z_]\w*)(?::(?P<type>int|str|float))?}")
 
@@ -382,4 +383,11 @@ def make_app(root_wapp: Type[Wapp], *, db_url: str, title: str = "Wapp API", lif
 
     app = FastAPI(title=title, lifespan=lifespan)
     app.include_router(root_wapp.build_router(session_dep=session_dep))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
