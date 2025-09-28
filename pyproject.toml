@@ -30,5 +30,8 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [project.scripts]
-wapp-init = "wapp.cli:init"
-wapp-export = "wapp.cli:export"
+# console entry points must reference a module:attribute. Point the main CLI group
+# and the individual click command callables exported by the modules.
+wapp = "wapp.cli:cli"
+wapp-init = "wapp.cli_commands.init:command"
+wapp-export = "wapp.cli_commands.export:command"
