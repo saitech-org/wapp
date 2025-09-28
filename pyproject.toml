@@ -30,4 +30,5 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [project.scripts]
-wapp-init = "wapp.cli:wapp_init"
+wapp-init = "wapp.cli:init"
+wapp-export = "wapp.cli:export"
