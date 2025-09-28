@@ -46,5 +46,30 @@ async def lifespan_with_subprocess(app):
     print("Applying any new migrations (upgrade head)...")
     _run([sys.executable, "-m", "alembic", "-c", str(ini), "upgrade", "head"], cwd=root, env=env)
 
-    yield
+    # 4) Optional: auto-export OpenAPI TypeScript artifacts
+    if os.getenv("AUTO_EXPORT", "1") not in ("0", "false", "False"):
+        try:
+            out_dir = root / "frontend" / "src" / "wapp"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            print(f"Running OpenAPI export to: {out_dir}")
+            cmd = [
+                sys.executable,
+                "-m",
+                "wapp.tools.export_openapi_ts",
+                "--app",
+                "app:app",
+                "--out",
+                str(out_dir),
+            ]
+            # Run exporter but don't raise on failure so startup isn't blocked
+            res = subprocess.run(cmd, check=False, cwd=str(root), env=env)
+            if res.returncode != 0:
+                print(f"OpenAPI export failed (exit {res.returncode}). You can run: {' '.join(cmd)}")
+            else:
+                print("OpenAPI artifacts generated successfully.")
+        except FileNotFoundError as e:
+            print(f"Failed to run exporter: {e}. Ensure the exporter module is available.")
+        except Exception as e:
+            print(f"OpenAPI export error: {e}")
 
+    yield
