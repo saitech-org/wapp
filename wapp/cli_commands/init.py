@@ -13,7 +13,7 @@ TEMPLATE_FILES = ["app.py","users_demo.py","settings.py","automigrate.py"]
 
 DEPENDENCIES = [
     "saitech-wapp","fastapi","uvicorn[standard]","sqlalchemy","alembic",
-    "pydantic","python-dotenv","aiosqlite",
+    "pydantic","pydantic[email]", "python-dotenv","aiosqlite",
 ]
 
 ALEMBIC_DIR = "migrations"
